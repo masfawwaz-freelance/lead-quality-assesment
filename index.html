@@ -733,9 +733,20 @@ function overallText(r){
   return "kondisi Lead Quality campaign Anda saat ini masih perlu banyak perbaikan.";
 }
 
+function buildFullResultText(r, p2, p3, p4, teaser){
+  return [
+    `Skor Keseluruhan: ${r.total}/21 (${r.totalPct}%) — Secara keseluruhan, ${overallText(r)}`,
+    `Market Fit: ${r.mfSum}/9 (${r.mfPct}%) | Messaging: ${r.msgSum}/12 (${r.msgPct}%)`,
+    `Kategori yang Lebih Lemah: ${p2}`,
+    `Titik Paling Mendasar: ${p3}`,
+    `Arah Perbaikan: ${p4}`,
+    `Perlu Digali Lebih Dalam: ${teaser}`,
+  ].join("\n\n");
+}
+
 let resultAlreadySent = false;
 
-function sendResultToSheet(r){
+function sendResultToSheet(r, p2, p3, p4, teaser){
   if(resultAlreadySent) return;
   if(!APPS_SCRIPT_URL || APPS_SCRIPT_URL.indexOf("PASTE_URL") === 0) return; // belum di-setup, skip diam-diam
   resultAlreadySent = true;
@@ -759,6 +770,7 @@ function sendResultToSheet(r){
     total: r.total,
     totalPct: r.totalPct,
     modeLabel: modeLabel(r),
+    hasilLengkap: buildFullResultText(r, p2, p3, p4, teaser),
   };
   fetch(APPS_SCRIPT_URL, {
     method: "POST",
@@ -770,10 +782,10 @@ function sendResultToSheet(r){
 
 function renderResults(){
   const r = computeResults();
-  sendResultToSheet(r);
   const p2 = point2Text(r);
   const { p3, p4 } = point3and4(r);
   const teaser = teaserText(r);
+  sendResultToSheet(r, p2, p3, p4, teaser);
 
   const container = document.createElement('div');
   container.innerHTML = `

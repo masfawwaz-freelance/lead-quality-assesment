@@ -404,6 +404,15 @@ let step = "intro";
 let answers = {}; // id -> option index (into shuffled array)
 let shuffledOptions = {}; // id -> array of option objects (shuffled once)
 let contact = { nama:"", klinik:"", wa:"" };
+let quizCode = "";
+
+// Kode unik per pengisi quiz, dipakai user buat referensi konsultasi lanjutan
+function generateCode(){
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // tanpa 0/O/1/I biar gak ambigu
+  let code = "";
+  for(let i=0;i<6;i++){ code += chars[Math.floor(Math.random()*chars.length)]; }
+  return "LQC-" + code;
+}
 
 function shuffle(arr){
   const a = arr.slice();
@@ -570,6 +579,7 @@ function attachHandlers(){
 
     if(valid){
       contact = { nama, klinik, wa };
+      quizCode = generateCode();
       step = 0;
       render();
     }
@@ -639,6 +649,30 @@ function computeResults(){
   return { scores, leadMixed, mfSum, msgSum, total, mfPct, msgPct, totalPct, mode, bottleneckId, weakerCategory, hasWarningCritical };
 }
 
+const INDICATOR_LABELS = {
+  "1.1":"Detail Target Market",
+  "1.2":"Fokus Layanan",
+  "1.3":"Fokus Market",
+  "2.1":"Isi Pesan",
+  "2.2":"Awareness Level",
+  "2.3":"Relevansi Pesan",
+  "2.4":"Kualitas Lead",
+};
+
+function modeLabel(r){
+  if(r.mode === "semua-sempurna") return "Semua Area Sudah Optimal";
+  if(r.mode === "aman-belum-optimal") return "Aman, Belum Optimal";
+  if(r.mode === "fondasi-tinggi-24-bermasalah") return "Fondasi Kuat, Kualitas Lead Bermasalah";
+  // ada-masalah
+  return "Ada Masalah di: " + (INDICATOR_LABELS[r.bottleneckId] || r.bottleneckId);
+}
+
+function answerDetail(id){
+  const idx = answers[id];
+  const opt = shuffledOptions[id][idx];
+  return `${opt.score}. ${opt.text}`;
+}
+
 function point2Text(r){
   if(r.weakerCategory === "tie"){
     return "Market Fit dan Messaging sama-sama lemah — tapi Market Fit tetap diperbaiki lebih dulu karena jadi fondasi campaign.";
@@ -706,16 +740,25 @@ function sendResultToSheet(r){
   if(!APPS_SCRIPT_URL || APPS_SCRIPT_URL.indexOf("PASTE_URL") === 0) return; // belum di-setup, skip diam-diam
   resultAlreadySent = true;
   const payload = {
+    code: quizCode,
     nama: contact.nama,
     klinik: contact.klinik,
     wa: contact.wa,
-    scores: r.scores,
+    answers: {
+      "1.1": answerDetail("1.1"),
+      "1.2": answerDetail("1.2"),
+      "1.3": answerDetail("1.3"),
+      "2.1": answerDetail("2.1"),
+      "2.2": answerDetail("2.2"),
+      "2.3": answerDetail("2.3"),
+      "2.4": answerDetail("2.4"),
+    },
     leadMixed: r.leadMixed,
     mfSum: r.mfSum,
     msgSum: r.msgSum,
     total: r.total,
     totalPct: r.totalPct,
-    mode: r.mode,
+    modeLabel: modeLabel(r),
   };
   fetch(APPS_SCRIPT_URL, {
     method: "POST",
@@ -737,6 +780,7 @@ function renderResults(){
     <div class="eyebrow">Hasil Anda</div>
     <div class="result-title">${r.total}/21 · ${r.totalPct}%</div>
     <p class="result-sub">Secara keseluruhan, ${overallText(r)}</p>
+    <p style="font-size:13px; color:var(--ink-soft); margin:-8px 0 20px;">Kode Anda: <strong style="color:var(--ink);">${quizCode}</strong> — simpan untuk sesi konsultasi selanjutnya</p>
 
     <div class="card">
       <div class="bars">

@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lead Quality Check — Klinik Kecantikan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #FFFFFF;
+    --card: #FFFFFF;
+    --ink: #2A2119;
+    --ink-soft: #8C7B72;
+    --grad-a: #F0A0AE;   /* blush */
+    --grad-b: #EFC48D;   /* champagne gold */
+    --grad-soft: linear-gradient(135deg, var(--grad-a), var(--grad-b));
+    --rose: #BD5C6E;
+    --rose-soft: #FBEBEE;
+    --sage: #C08B3E;
+    --sage-soft: #FBF0DE;
+    --amber: #BD5C6E;
+    --amber-soft: #FBEBEE;
+    --line: #EFE7E2;
+    --radius: 18px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(1000px 480px at 50% -8%, rgba(240,160,174,.14), transparent 62%),
+      radial-gradient(900px 420px at 100% 0%, rgba(239,196,141,.10), transparent 55%),
+      var(--bg);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{
+    max-width:640px;
+    margin:0 auto;
+    padding:36px 20px 80px;
+  }
+  .eyebrow{
+    font-size:12px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--rose);
+    font-weight:600;
+    margin-bottom:6px;
+  }
+  h1{
+    font-family:'Fraunces',serif;
+    font-weight:600;
+    font-size:30px;
+    line-height:1.15;
+    margin:0 0 10px;
+    letter-spacing:-.01em;
+  }
+  .sub{
+    color:var(--ink-soft);
+    font-size:15px;
+    line-height:1.55;
+    margin:0 0 28px;
+  }
+  .progress-track{
+    height:6px;
+    background:var(--line);
+    border-radius:99px;
+    overflow:hidden;
+    margin-bottom:8px;
+  }
+  .progress-fill{
+    height:100%;
+    background:var(--grad-soft);
+    border-radius:99px;
+    transition:width .35s ease;
+  }
+  .progress-label{
+    font-size:12px;
+    color:var(--ink-soft);
+    margin-bottom:28px;
+  }
+  .card{
+    background:var(--card);
+    border-radius:var(--radius);
+    padding:28px 26px;
+    box-shadow:0 1px 2px rgba(42,33,25,.03), 0 16px 40px rgba(42,33,25,.07);
+    border:1px solid var(--line);
+  }
+  .cat-tag{
+    display:inline-block;
+    font-size:11px;
+    font-weight:600;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    padding:4px 10px;
+    border-radius:99px;
+    margin-bottom:14px;
+  }
+  .cat-tag.mf{ background:var(--sage-soft); color:var(--sage); font-weight:700; }
+  .cat-tag.msg{ background:var(--rose-soft); color:var(--rose); font-weight:700; }
+  .qtext{
+    font-family:'Fraunces',serif;
+    font-size:20px;
+    font-weight:500;
+    line-height:1.4;
+    margin:0 0 22px;
+  }
+  .options{ display:flex; flex-direction:column; gap:10px; }
+  .opt{
+    text-align:left;
+    border:1.5px solid var(--line);
+    background:#FDFBF9;
+    border-radius:12px;
+    padding:14px 16px;
+    font-family:'Inter',sans-serif;
+    font-size:14.5px;
+    line-height:1.5;
+    color:var(--ink);
+    cursor:pointer;
+    transition:border-color .15s ease, background .15s ease, transform .1s ease;
+  }
+  .opt:hover{ border-color:var(--grad-a); background:#FFF; }
+  .opt:active{ transform:scale(.995); }
+  .opt.selected{
+    border-color:var(--grad-a);
+    background:linear-gradient(135deg, rgba(240,160,174,.13), rgba(239,196,141,.13));
+  }
+  .opt-ex{
+    display:block;
+    margin-top:6px;
+    font-style:italic;
+    font-size:12.5px;
+    color:var(--ink-soft);
+  }
+  .nav-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-top:24px;
+  }
+  .btn{
+    font-family:'Inter',sans-serif;
+    font-weight:600;
+    font-size:14px;
+    border:none;
+    border-radius:99px;
+    padding:12px 24px;
+    cursor:pointer;
+    transition:opacity .15s ease, transform .1s ease;
+  }
+  .btn:active{ transform:scale(.98); }
+  .btn-primary{ background:var(--ink); color:#fff; }
+  .btn-primary:disabled{ opacity:.3; cursor:not-allowed; }
+  .btn-ghost{ background:transparent; color:var(--ink-soft); padding:12px 8px; }
+  .btn-ghost:disabled{ opacity:0; pointer-events:none; }
+
+  /* RESULTS */
+  .gauge-wrap{ display:flex; justify-content:center; margin:6px 0 22px; }
+  .result-title{
+    font-family:'Fraunces',serif;
+    font-size:26px;
+    font-weight:600;
+    text-align:center;
+    margin:0 0 4px;
+  }
+  .result-sub{
+    text-align:center;
+    color:var(--ink-soft);
+    font-size:14px;
+    margin:0 0 28px;
+  }
+  .bars{ display:flex; flex-direction:column; gap:14px; margin:22px 0; }
+  .bar-row .bar-label{
+    display:flex; justify-content:space-between;
+    font-size:13px; font-weight:600; margin-bottom:6px;
+  }
+  .bar-track{
+    height:8px; background:var(--line); border-radius:99px; overflow:hidden;
+  }
+  .bar-fill{ height:100%; border-radius:99px; }
+  .bar-fill.mf{ background:var(--sage); }
+  .bar-fill.msg{ background:var(--rose); }
+
+  .point{
+    border-top:1px solid var(--line);
+    padding:20px 0;
+  }
+  .point:first-child{ border-top:none; padding-top:4px; }
+  .point-num{
+    font-family:'Fraunces',serif;
+    font-style:italic;
+    font-size:13px;
+    color:var(--rose);
+    margin-bottom:4px;
+    display:block;
+  }
+  .point-title{
+    font-weight:700;
+    font-size:15px;
+    margin:0 0 6px;
+  }
+  .point-body{
+    font-size:14.5px;
+    line-height:1.6;
+    color:var(--ink);
+    margin:0;
+  }
+
+  .teaser{
+    margin-top:24px;
+    background:linear-gradient(135deg, #FCEEF0, #FCF2E2);
+    border:1px solid #F2D9CB;
+    border-radius:16px;
+    padding:22px 22px 20px;
+  }
+  .teaser-label{
+    font-size:11px;
+    font-weight:700;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:var(--rose);
+    margin-bottom:8px;
+    display:block;
+  }
+  .teaser p{ font-size:14.5px; line-height:1.6; margin:0 0 16px; color:var(--ink); }
+  .cta{
+    display:inline-block;
+    width:100%;
+    text-align:center;
+    background:var(--grad-soft);
+    color:#2A2119;
+    font-weight:700;
+    font-size:14.5px;
+    padding:14px;
+    border-radius:99px;
+    text-decoration:none;
+    box-shadow:0 10px 24px rgba(240,160,174,.35);
+  }
+  .cta:hover{ opacity:.92; }
+  .restart{
+    display:block;
+    text-align:center;
+    margin-top:18px;
+    font-size:13px;
+    color:var(--ink-soft);
+    background:none;
+    border:none;
+    cursor:pointer;
+    text-decoration:underline;
+  }
+
+  /* INTRO / CONTACT FORM */
+  .why-box{
+    background:linear-gradient(135deg, #FCF2E2, #FCEEF0);
+    border-radius:14px;
+    padding:16px 18px;
+    margin-bottom:22px;
+  }
+  .why-box p{
+    font-size:13.5px;
+    line-height:1.6;
+    color:var(--ink);
+    margin:0;
+  }
+  .field{ margin-bottom:16px; }
+  .field label{
+    display:block;
+    font-size:13px;
+    font-weight:600;
+    margin-bottom:6px;
+  }
+  .field input{
+    width:100%;
+    border:1.5px solid var(--line);
+    background:#FDFBF9;
+    border-radius:10px;
+    padding:12px 14px;
+    font-family:'Inter',sans-serif;
+    font-size:14.5px;
+    color:var(--ink);
+  }
+  .field input:focus{
+    outline:none;
+    border-color:var(--grad-a);
+  }
+  .field-error{
+    font-size:12px;
+    color:var(--amber);
+    margin-top:4px;
+    display:none;
+  }
+  .field.invalid input{ border-color:var(--amber); }
+  .field.invalid .field-error{ display:block; }
+  @media (max-width:480px){
+    h1{ font-size:26px; }
+    .qtext{ font-size:18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+
+<script>
+// ---------- DATA ----------
+// score: 0=Critical, 1=Warning, 2=Skor2, 3=Skor3
+const QUESTIONS = [
+  { id:"1.1", cat:"mf", catLabel:"Market Fit",
+    q:"Saat menjalankan campaign untuk 1 layanan tertentu, mana kondisi yang paling menggambarkan detail target market yang Anda miliki saat ini?",
+    options:[
+      {text:"Saya cuma tahu target market dari sisi usia, gender, pekerjaan saja", ex:"Wanita 25–40 yang kerja kantoran", score:0},
+      {text:"Saya tahu masalah/kondisi yang mereka alami, tapi belum jelas apa yang bikin mereka risih/kesel soal itu", ex:"Wanita 25–40 yang kerja kantoran dan punya masalah sama jerawat", score:1},
+      {text:"Saya tahu apa masalah dan kebutuhan mereka, tapi belum tahu persis momen/situasi apa yang mereka bayangin kalau masalah ini udah nggak ada lagi", ex:"Wanita 25–40 yang kerja kantoran, sadar punya masalah jerawat, pengen bebas jerawat dan pede", score:2},
+      {text:"Saya tahu masalah mereka sampai tahu momen/situasi spesifik yang mereka kejar kalau masalah ini udah nggak ada lagi", ex:"Wanita 25–40 yang kerja kantoran, sadar punya masalah jerawat, pengen bebas jerawat dan pede pas ketemu klien", score:3},
+    ]},
+  { id:"1.2", cat:"mf", catLabel:"Market Fit",
+    q:"Saat menjalankan sebuah campaign, mana kondisi yang paling menggambarkan fokus layanan yang Anda tawarkan?",
+    options:[
+      {text:"Saya promosiin beberapa layanan sekaligus di 1 campaign, semua keliatan sama pentingnya", ex:"Iklan promosiin facial acne, whitening, dan laser sekaligus — semua porsinya sama besar", score:0},
+      {text:"Ada 1 layanan yang lebih saya tonjolkan, tapi layanan lain masih ikut nongol di iklan/ads creative", ex:"Fokus utama di facial acne, tapi ads creative-nya masih nyebut promo whitening juga", score:1},
+      {text:"Iklan fokus 1 layanan, tapi pas jelasin manfaat suka kebawa-bawa cerita layanan lain juga", ex:"Fokus ke facial acne, tapi pas jelasin manfaat malah kebawa cerita \"kulit jadi putih\" — itu manfaat whitening", score:2},
+      {text:"Dari konten iklan sampai ads copy, saya cuma fokus ngomongin 1 layanan tertentu aja", ex:"Dari konten iklan sampai ads copy, cuma ngomongin facial acne doang", score:3},
+    ]},
+  { id:"1.3", cat:"mf", catLabel:"Market Fit",
+    q:"Saat membuat campaign untuk spesifik 1 layanan, mana kondisi yang paling menggambarkan fokus market yang Anda tuju?",
+    options:[
+      {text:"Iklan saya dibuat buat siapa aja, nggak diarahin ke target market tertentu", ex:"Iklan ditujukan buat \"semua orang yang mau kulit glowing\", nggak ada target spesifik", score:0},
+      {text:"Saya udah menarget 1 spesifik market, tapi iklannya masih nyoba narik beberapa target market sekaligus", ex:"Target utamanya wanita kantoran capek kerja, tapi masih coba narik remaja atau ibu rumah tangga juga", score:1},
+      {text:"Kebanyakan iklan udah ke 1 spesifik market itu, tapi sesekali masih \"nyerempet\" ke target market lain", ex:"Fokus ke wanita kantoran capek kerja, tapi sesekali masih nyerempet ke target lain", score:2},
+      {text:"Iklan saya bener-bener cuma ngomong ke 1 spesifik market itu doang, dari awal sampai akhir", ex:"Dari awal sampai akhir cuma ngomong ke wanita kantoran capek kerja, nggak narik target lain", score:3},
+    ]},
+  { id:"2.1", cat:"msg", catLabel:"Messaging",
+    q:"Saat membuat pesan untuk campaign, mana kondisi yang paling menggambarkan isi pesan Anda saat ini?",
+    options:[
+      {text:"Pesan lebih ke promosi layanan umum, belum menyentuh masalah atau keinginan target market", ex:"Promosi facial acne secara umum, belum menyebut jerawat atau target marketnya", score:0},
+      {text:"Pesan udah terkait layanan, tapi belum spesifik ke target market tertentu", ex:"Udah menyinggung jerawat, tapi belum spesifik ke wanita kantoran yang capek kerja", score:1},
+      {text:"Pesan udah menyasar target market & masalah utamanya, tapi pain point/keinginannya belum digali dalam", ex:"Menyasar wanita kantoran yang jerawatan, tapi pain point-nya belum digali", score:2},
+      {text:"Pesan udah membahas masalah, pain point, dan keinginan target market secara spesifik, lalu dikaitkan ke manfaat layanan", ex:"Menyasar wanita kantoran yang jerawatan, insecure ketemu klien, pengen pede lagi — dikaitkan ke manfaat facial acne", score:3},
+    ]},
+  { id:"2.2", cat:"msg", catLabel:"Messaging",
+    q:"Saat membuat campaign, mana kondisi yang paling menggambarkan cara Anda menyesuaikan pesan dengan awareness level market yang dituju?",
+    options:[
+      {text:"Saya bikin pesan berdasarkan feeling aja / niru campaign lain, nggak mikir orangnya udah tau soal masalahnya atau belum", ex:"Pesan dibuat asal ikut format campaign lain, tanpa cek wanita kantoran itu udah sadar jerawatnya atau belum", score:0},
+      {text:"Kadang saya mikirin itu, tapi nggak konsisten tiap bikin campaign", ex:"Kadang kepikiran cek dulu, tapi nggak konsisten tiap campaign", score:1},
+      {text:"Saya cukup sering cek dulu udah sejauh mana orangnya paham soal masalah/solusinya, tapi belum jadi kebiasaan tetap", ex:"Sering cek dulu sejauh mana dia paham soal jerawat & solusinya, tapi belum jadi kebiasaan", score:2},
+      {text:"Saya selalu cek dulu: orang ini udah sadar masalahnya belum, udah tau solusinya belum — baru saya sesuaikan pesannya", ex:"Selalu cek dulu sadar masalah & solusinya belum, baru pesan disesuaikan", score:3},
+    ]},
+  { id:"2.3", cat:"msg", catLabel:"Messaging",
+    q:"Saat orang melihat konten/iklan Anda, mana kondisi yang paling menggambarkan seberapa relate pesan Anda dengan target market?",
+    options:[
+      {text:"Pesan saya belum menggambarkan kondisi target market, masih terasa seperti promosi umum", score:0},
+      {text:"Pesan udah cukup umum, target market paham topiknya tapi belum merasa \"ini ngomongin saya\"", score:1},
+      {text:"Pesan udah cukup relate, tapi belum spesifik menggambarkan situasi mereka sehari-hari", score:2},
+      {text:"Pesan sangat relate karena membahas kondisi, problem, keresahan, dan situasi mereka secara spesifik dan realistis", score:3},
+    ]},
+];
+
+const FILTER_Q = {
+  id:"P7", cat:"msg", catLabel:"Validitas Data",
+  q:"Lead yang akan Anda nilai di pertanyaan berikutnya, berasal dari mana?",
+  options:[
+    {text:"Campur — ada yang dari komen/DM organic, link bio, referral, atau data lama yang ikut saya hitung", mixed:true},
+    {text:"Murni dari orang yang klik/masuk dari iklan campaign ini aja", mixed:false},
+  ]
+};
+
+const Q24 = { id:"2.4", cat:"msg", catLabel:"Messaging",
+  q:"Dari leads yang masuk ke campaign Anda, mana kondisi yang paling menggambarkan kualitas lead saat ini?",
+  options:[
+    {text:"Banyak yang chat/DM tapi ternyata bukan tipe orang atau kebutuhan yang saya incer", score:0},
+    {text:"Sebagian yang masuk sesuai, tapi lumayan banyak juga yang meleset dari incaran", score:1},
+    {text:"Kebanyakan yang masuk udah sesuai incaran, cuma sedikit yang meleset", score:2},
+    {text:"Yang masuk konsisten sesuai tipe orang, layanan, dan maksud dari iklan saya", score:3},
+  ]};
+
+const FLOW = [QUESTIONS[0],QUESTIONS[1],QUESTIONS[2],QUESTIONS[3],QUESTIONS[4],QUESTIONS[5],FILTER_Q,Q24];
+
+// GANTI URL DI BAWAH INI dengan URL Web App dari Apps Script Anda
+// (lihat instruksi di file apps-script-lead-quality.gs)
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyXqGwbjFNdDluJM8FSWnxeNlMkSswKj4hPW8mDmxXtuItuP_JIUH8CFYEK96-50A-s-A/exec";
+
+const ARAH = {
+  "1.1":"Perjelas dulu siapa target market Anda secara detail — bukan cuma usia/pekerjaan, tapi masalah, kebutuhan, dan keinginan spesifik mereka.",
+  "1.2":"Tetapkan 1 layanan utama untuk campaign ini sebelum melanjutkan ke penyesuaian pesan.",
+  "1.3":"Fokuskan campaign ke 1 target market spesifik, jangan mencoba menjangkau beberapa market sekaligus.",
+  "2.1":"Hubungkan pesan Anda lebih spesifik ke masalah, kebutuhan, dan keinginan target market — bukan hanya menjelaskan fitur layanan.",
+  "2.2":"Tentukan dulu seberapa sadar target market terhadap masalah dan solusinya, baru susun pesan yang sesuai level tersebut.",
+  "2.3":"Buat pesan lebih spesifik ke situasi nyata target market, supaya mereka merasa pesan ini benar-benar tentang mereka.",
+  "2.4":"Cek kembali apakah target market, layanan, dan pesan campaign benar-benar konsisten dengan lead yang masuk.",
+};
+const BOTTLENECK_DESC = {
+  "1.1":"target market Anda belum cukup spesifik.",
+  "1.2":"campaign masih membawa lebih dari 1 layanan sekaligus.",
+  "1.3":"campaign belum benar-benar fokus ke 1 target market spesifik.",
+  "2.1":"pesan campaign belum cukup menghubungkan masalah/kebutuhan target market dengan manfaat layanan.",
+  "2.2":"pesan belum disesuaikan dengan awareness level target market.",
+  "2.3":"pesan belum cukup spesifik untuk membuat target market merasa relate.",
+  "2.4":"lead yang masuk belum konsisten sesuai target market, layanan, dan pesan campaign.",
+};
+
+// ---------- STATE ----------
+// step: "intro" -> 0..7 questions -> "results"
+let step = "intro";
+let answers = {}; // id -> option index (into shuffled array)
+let shuffledOptions = {}; // id -> array of option objects (shuffled once)
+let contact = { nama:"", klinik:"", wa:"" };
+
+function shuffle(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+FLOW.forEach(q=>{ shuffledOptions[q.id] = shuffle(q.options); });
+
+// ---------- DOM HELPER (no innerHTML, for security-safe DOM building) ----------
+function el(tag, attrs, children){
+  const node = document.createElement(tag);
+  if(attrs){
+    Object.keys(attrs).forEach(key=>{
+      if(key === 'class'){ node.className = attrs[key]; }
+      else if(key === 'text'){ node.textContent = attrs[key]; }
+      else if(key === 'disabled'){ if(attrs[key]) node.setAttribute('disabled',''); }
+      else if(key === 'style'){ node.setAttribute('style', attrs[key]); }
+      else { node.setAttribute(key, attrs[key]); }
+    });
+  }
+  (children||[]).forEach(child=>{
+    if(child === null || child === undefined) return;
+    if(typeof child === 'string' || typeof child === 'number'){
+      node.appendChild(document.createTextNode(String(child)));
+    } else {
+      node.appendChild(child);
+    }
+  });
+  return node;
+}
+function clearNode(node){
+  while(node.firstChild){ node.removeChild(node.firstChild); }
+}
+
+// ---------- RENDER ----------
+function render(){
+  const app = document.getElementById('app');
+  clearNode(app);
+  let content;
+  if(step === "intro"){
+    content = renderIntro();
+  } else if(step === "results"){
+    content = renderResults();
+  } else {
+    content = renderQuestion();
+  }
+  app.appendChild(content);
+  attachHandlers();
+}
+
+function renderIntro(){
+  const frag = document.createDocumentFragment();
+  frag.appendChild(el('div',{class:'eyebrow',text:'Lead Quality Check'}));
+  frag.appendChild(el('h1',{text:'Seberapa berkualitas lead dari iklan klinik Anda?'}));
+  frag.appendChild(el('p',{class:'sub',text:`Jawab ${FLOW.length} pertanyaan singkat (kurang dari 3 menit) untuk mengetahui apakah iklan klinik Anda sudah mendatangkan lead yang tepat — atau justru cuma ramai tapi nggak closing.`}));
+
+  const whyBox = el('div',{class:'why-box'},[
+    el('p',{text:'Kami minta nama & WhatsApp Anda supaya hasil dan rekomendasi perbaikannya bisa dikirim langsung ke Anda — bukan cuma tampil sekali di layar dan hilang. Data Anda tidak dibagikan ke pihak lain.'})
+  ]);
+
+  const fNama = el('div',{class:'field', id:'f-nama'},[
+    el('label',{for:'in-nama',text:'Nama Anda'}),
+    el('input',{type:'text', id:'in-nama', placeholder:'Nama lengkap'}),
+    el('div',{class:'field-error',text:'Nama wajib diisi'}),
+  ]);
+  const fKlinik = el('div',{class:'field', id:'f-klinik'},[
+    el('label',{for:'in-klinik',text:'Nama Klinik'}),
+    el('input',{type:'text', id:'in-klinik', placeholder:'Nama klinik Anda'}),
+    el('div',{class:'field-error',text:'Nama klinik wajib diisi'}),
+  ]);
+  const fWa = el('div',{class:'field', id:'f-wa'},[
+    el('label',{for:'in-wa',text:'Nomor WhatsApp'}),
+    el('input',{type:'tel', id:'in-wa', placeholder:'628xxxxxxxxx'}),
+    el('div',{class:'field-error',text:'Nomor WhatsApp tidak valid (format 628xxxxxxxxx, minimal 10 digit)'}),
+  ]);
+  const navRow = el('div',{class:'nav-row', style:'justify-content:flex-end;'},[
+    el('button',{class:'btn btn-primary', id:'startBtn', text:'Mulai Quiz →'})
+  ]);
+
+  const card = el('div',{class:'card'},[whyBox, fNama, fKlinik, fWa, navRow]);
+  frag.appendChild(card);
+  return frag;
+}
+
+function renderQuestion(){
+  const q = FLOW[step];
+  const opts = shuffledOptions[q.id];
+  const selected = answers[q.id];
+  const pct = Math.round((step/FLOW.length)*100);
+  const catClass = q.cat === 'mf' ? 'mf' : 'msg';
+  const catText = q.cat === 'mf' ? 'Market Fit' : (q.id==='P7' ? 'Validitas Data' : 'Messaging');
+
+  const frag = document.createDocumentFragment();
+  frag.appendChild(el('div',{class:'eyebrow',text:'Lead Quality Check'}));
+  frag.appendChild(el('h1',{text:'Seberapa berkualitas lead dari iklan klinik Anda?'}));
+  frag.appendChild(el('p',{class:'sub',text:`Jawab ${FLOW.length} pertanyaan singkat untuk mengetahui kondisi campaign Anda saat ini.`}));
+  frag.appendChild(el('div',{class:'progress-track'},[
+    el('div',{class:'progress-fill', style:`width:${pct}%`})
+  ]));
+  frag.appendChild(el('div',{class:'progress-label',text:`Pertanyaan ${step+1} dari ${FLOW.length}`}));
+
+  const optionsWrap = el('div',{class:'options'});
+  opts.forEach((o,i)=>{
+    const children = [o.text];
+    if(o.ex){ children.push(el('span',{class:'opt-ex', text:o.ex})); }
+    const btn = el('button',{class:`opt${selected===i?' selected':''}`, 'data-idx':String(i)}, children);
+    optionsWrap.appendChild(btn);
+  });
+
+  const navRow = el('div',{class:'nav-row'},[
+    el('button',{class:'btn btn-ghost', id:'backBtn', disabled:(step===0), text:'← Kembali'}),
+    el('button',{class:'btn btn-primary', id:'nextBtn', disabled:(selected===undefined), text:(step===FLOW.length-1?'Lihat Hasil':'Lanjut')}),
+  ]);
+
+  const card = el('div',{class:'card'},[
+    el('span',{class:`cat-tag ${catClass}`, text:catText}),
+    el('p',{class:'qtext', text:q.q}),
+    optionsWrap,
+    navRow,
+  ]);
+  frag.appendChild(card);
+  return frag;
+}
+
+function attachHandlers(){
+  document.querySelectorAll('.opt').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const q = FLOW[step];
+      answers[q.id] = parseInt(btn.dataset.idx);
+      render();
+    });
+  });
+  const backBtn = document.getElementById('backBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  if(backBtn) backBtn.addEventListener('click', ()=>{ step--; render(); });
+  if(nextBtn) nextBtn.addEventListener('click', ()=>{
+    if(step === FLOW.length-1){ step = "results"; } else { step++; }
+    render();
+  });
+  const restartBtn = document.getElementById('restartBtn');
+  if(restartBtn) restartBtn.addEventListener('click', ()=>{
+    step=0; answers={};
+    FLOW.forEach(q=>{ shuffledOptions[q.id] = shuffle(q.options); });
+    render();
+  });
+  const startBtn = document.getElementById('startBtn');
+  if(startBtn) startBtn.addEventListener('click', ()=>{
+    const namaEl = document.getElementById('in-nama');
+    const klinikEl = document.getElementById('in-klinik');
+    const waEl = document.getElementById('in-wa');
+    const nama = namaEl.value.trim();
+    const klinik = klinikEl.value.trim();
+    const wa = normalizeWa(waEl.value);
+
+    let valid = true;
+    toggleFieldError('f-nama', nama.length === 0);
+    toggleFieldError('f-klinik', klinik.length === 0);
+    const waInvalid = !wa.startsWith('628') || wa.length < 10;
+    toggleFieldError('f-wa', waInvalid);
+    if(nama.length===0 || klinik.length===0 || waInvalid) valid = false;
+
+    if(valid){
+      contact = { nama, klinik, wa };
+      step = 0;
+      render();
+    }
+  });
+}
+
+// Menormalkan berbagai format input nomor WA (08xx, +62xx, 62xx, 8xx)
+// supaya hasilnya selalu diawali "628".
+function normalizeWa(raw){
+  let digits = String(raw||'').replace(/[^0-9]/g,''); // buang +, spasi, strip, dll
+  if(digits.startsWith('0')){
+    digits = '62' + digits.slice(1);
+  } else if(digits.startsWith('620')){
+    digits = '62' + digits.slice(3);
+  } else if(!digits.startsWith('62')){
+    digits = '62' + digits;
+  }
+  return digits;
+}
+
+function toggleFieldError(fieldId, isInvalid){
+  const el = document.getElementById(fieldId);
+  if(!el) return;
+  el.classList.toggle('invalid', isInvalid);
+}
+
+// ---------- SCORING ----------
+function computeResults(){
+  const scores = {};
+  QUESTIONS.forEach(q=>{
+    const idx = answers[q.id];
+    scores[q.id] = shuffledOptions[q.id][idx].score;
+  });
+  scores["2.4"] = shuffledOptions["2.4"][answers["2.4"]].score;
+  const leadMixed = shuffledOptions["P7"][answers["P7"]].mixed;
+
+  const mfSum = scores["1.1"]+scores["1.2"]+scores["1.3"];
+  const msgSum = scores["2.1"]+scores["2.2"]+scores["2.3"]+scores["2.4"];
+  const total = mfSum + msgSum;
+  const mfPct = Math.round((mfSum/9)*100);
+  const msgPct = Math.round((msgSum/12)*100);
+  const totalPct = Math.round((total/21)*100);
+
+  const order = ["1.1","1.2","1.3","2.1","2.2","2.3","2.4"];
+  const first6 = ["1.1","1.2","1.3","2.1","2.2","2.3"];
+  const allFirst6Perfect = first6.every(id=>scores[id]===3);
+  const twentyFourWeak = scores["2.4"]<=1;
+
+  let mode, bottleneckId=null;
+  if(allFirst6Perfect && twentyFourWeak && !leadMixed){
+    mode = "fondasi-tinggi-24-bermasalah";
+    bottleneckId = "2.4";
+  } else {
+    bottleneckId = order.find(id=>scores[id]<=1) || null;
+    if(bottleneckId){ mode = "ada-masalah"; }
+    else if(order.every(id=>scores[id]===3)){ mode = "semua-sempurna"; }
+    else { mode = "aman-belum-optimal"; }
+  }
+
+  let weakerCategory;
+  if(mfPct < msgPct) weakerCategory = "mf";
+  else if(msgPct < mfPct) weakerCategory = "msg";
+  else weakerCategory = "tie";
+
+  const hasWarningCritical = order.some(id=>scores[id]<=1);
+
+  return { scores, leadMixed, mfSum, msgSum, total, mfPct, msgPct, totalPct, mode, bottleneckId, weakerCategory, hasWarningCritical };
+}
+
+function point2Text(r){
+  if(r.weakerCategory === "tie"){
+    return "Market Fit dan Messaging sama-sama lemah — tapi Market Fit tetap diperbaiki lebih dulu karena jadi fondasi campaign.";
+  }
+  if(r.weakerCategory === "mf"){
+    return "Antara fondasi campaign (Market Fit) dan cara pesan disampaikan (Messaging), yang jadi kelemahan utama adalah Market Fit.";
+  }
+  return "Antara fondasi campaign (Market Fit) dan cara pesan disampaikan (Messaging), yang jadi kelemahan utama adalah Messaging.";
+}
+
+function point3and4(r){
+  if(r.mode === "semua-sempurna"){
+    return {
+      p3:"Tidak ditemukan titik lemah yang signifikan — kondisi campaign Anda kuat di semua area.",
+      p4:"Fokus selanjutnya bukan lagi memperbaiki, tapi mengeksplorasi peluang scaling lebih jauh dari campaign yang sudah berjalan baik ini."
+    };
+  }
+  if(r.mode === "aman-belum-optimal"){
+    return {
+      p3:"Tidak ada area yang darurat, tapi belum ada yang benar-benar maksimal juga — semua indikator masih di level menengah.",
+      p4:"Tinjau ulang tiap bagian (target market, fokus layanan, hingga pesan) satu per satu untuk mencari ruang peningkatan kecil di masing-masing area."
+    };
+  }
+  if(r.mode === "fondasi-tinggi-24-bermasalah"){
+    return {
+      p3:"Fondasi dan pesan campaign Anda sudah sangat kuat, tapi lead yang masuk tetap belum konsisten sesuai target — meski sumber lead sudah dikonfirmasi murni dari campaign ini.",
+      p4:"Karena fondasi sudah kuat, coba cek dua hal: apakah jawaban di pertanyaan sebelumnya benar-benar menggambarkan kondisi aktual, dan apakah proses pencatatan lead (dari klik iklan sampai masuk ke CS) sudah tertandai jelas asalnya."
+    };
+  }
+  // ada-masalah
+  const id = r.bottleneckId;
+  return { p3: BOTTLENECK_DESC[id], p4: ARAH[id] };
+}
+
+function teaserText(r){
+  if(r.mode === "fondasi-tinggi-24-bermasalah"){
+    return "Hasil Anda kuat di hampir semua area, tapi ada 1 titik yang perlu digali lebih dalam — biasanya ini berarti masalahnya bukan lagi soal campaign, tapi soal proses di baliknya.";
+  }
+  if(r.mode === "semua-sempurna"){
+    return "Secara angka udah bagus — tapi biasanya di titik ini yang perlu dicek justru bukan \"apa yang salah\", tapi \"apa yang bisa di-scale lebih jauh lagi\".";
+  }
+  if(r.leadMixed && r.hasWarningCritical){
+    return "Ada data lead yang tercampur sumbernya, jadi hasil di atas perlu dikonfirmasi ulang — sekalian kita bahas titik-titik lain yang saling berkaitan.";
+  }
+  if(r.leadMixed){
+    return "Ada data lead yang tercampur sumbernya, jadi hasil kualitas lead di atas perlu dikonfirmasi ulang sebelum dijadikan dasar keputusan.";
+  }
+  if(r.hasWarningCritical){
+    return "Ditemukan beberapa titik yang saling berkaitan — kalau dibenerin nggak berurutan, bisa buang waktu dan budget iklan.";
+  }
+  return "Belum ada yang darurat, tapi ada beberapa peluang perbaikan yang kalau digarap bisa naikin kualitas lead lumayan jauh.";
+}
+
+function overallText(r){
+  if(r.totalPct >= 85) return "kondisi Lead Quality campaign Anda sangat kuat.";
+  if(r.totalPct >= 65) return "kondisi Lead Quality campaign Anda cukup baik, meski masih ada ruang perbaikan.";
+  if(r.totalPct >= 40) return "kondisi Lead Quality campaign Anda masih perlu beberapa perbaikan penting.";
+  return "kondisi Lead Quality campaign Anda saat ini masih perlu banyak perbaikan.";
+}
+
+let resultAlreadySent = false;
+
+function sendResultToSheet(r){
+  if(resultAlreadySent) return;
+  if(!APPS_SCRIPT_URL || APPS_SCRIPT_URL.indexOf("PASTE_URL") === 0) return; // belum di-setup, skip diam-diam
+  resultAlreadySent = true;
+  const payload = {
+    nama: contact.nama,
+    klinik: contact.klinik,
+    wa: contact.wa,
+    scores: r.scores,
+    leadMixed: r.leadMixed,
+    mfSum: r.mfSum,
+    msgSum: r.msgSum,
+    total: r.total,
+    totalPct: r.totalPct,
+    mode: r.mode,
+  };
+  fetch(APPS_SCRIPT_URL, {
+    method: "POST",
+    mode: "no-cors", // Apps Script Web App biasanya butuh ini dari browser
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify(payload),
+  }).catch(()=>{ /* diamkan kalau gagal kirim, jangan ganggu pengalaman user */ });
+}
+
+function renderResults(){
+  const r = computeResults();
+  sendResultToSheet(r);
+  const p2 = point2Text(r);
+  const { p3, p4 } = point3and4(r);
+  const teaser = teaserText(r);
+
+  const container = document.createElement('div');
+  container.innerHTML = `
+    <div class="eyebrow">Hasil Anda</div>
+    <div class="result-title">${r.total}/21 · ${r.totalPct}%</div>
+    <p class="result-sub">Secara keseluruhan, ${overallText(r)}</p>
+
+    <div class="card">
+      <div class="bars">
+        <div class="bar-row">
+          <div class="bar-label"><span>Market Fit</span><span>${r.mfSum}/9 (${r.mfPct}%)</span></div>
+          <div class="bar-track"><div class="bar-fill mf" style="width:${r.mfPct}%"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label"><span>Messaging</span><span>${r.msgSum}/12 (${r.msgPct}%)</span></div>
+          <div class="bar-track"><div class="bar-fill msg" style="width:${r.msgPct}%"></div></div>
+        </div>
+      </div>
+
+      <div class="point">
+        <span class="point-num">01</span>
+        <p class="point-title">Skor Keseluruhan</p>
+        <p class="point-body">Total skor Anda: ${r.total}/21 (${r.totalPct}%). Secara keseluruhan, ${overallText(r)}</p>
+      </div>
+      <div class="point">
+        <span class="point-num">02</span>
+        <p class="point-title">Kategori yang Lebih Lemah</p>
+        <p class="point-body">${p2}</p>
+      </div>
+      <div class="point">
+        <span class="point-num">03</span>
+        <p class="point-title">Titik Paling Mendasar</p>
+        <p class="point-body">${p3}</p>
+      </div>
+      <div class="point">
+        <span class="point-num">04</span>
+        <p class="point-title">Arah Perbaikan</p>
+        <p class="point-body">${p4}</p>
+      </div>
+    </div>
+
+    <div class="teaser">
+      <span class="teaser-label">Perlu digali lebih dalam</span>
+      <p>${teaser}</p>
+      <a class="cta" href="#" id="ctaBtn">Jadwalkan Konsultasi Gratis 20 Menit</a>
+    </div>
+
+    <button class="restart" id="restartBtn">Isi ulang quiz</button>
+  `;
+  return container;
+}
+
+render();
+</script>
+</body>
+</html>

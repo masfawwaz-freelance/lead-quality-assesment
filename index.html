@@ -292,9 +292,76 @@
   }
   .field.invalid input{ border-color:var(--amber); }
   .field.invalid .field-error{ display:block; }
+  /* INTRO (penjelasan) */
+  .info-title{
+    font-size:13px;
+    font-weight:700;
+    margin:0 0 12px;
+  }
+  .info-list{ list-style:none; margin:0 0 20px; padding:0; display:flex; flex-direction:column; gap:12px; }
+  .info-list li{
+    display:flex; gap:12px; align-items:flex-start;
+    font-size:14.5px; line-height:1.5;
+  }
+  .info-num{
+    flex:0 0 auto;
+    width:24px; height:24px; border-radius:50%;
+    background:var(--grad-soft);
+    color:#2A2119;
+    font-size:12px; font-weight:700;
+    display:flex; align-items:center; justify-content:center;
+    margin-top:1px;
+  }
+  .honest-box{
+    background:linear-gradient(135deg, #FCEEF0, #FCF2E2);
+    border:1px solid #F2D9CB;
+    border-radius:14px;
+    padding:16px 18px;
+    margin-bottom:22px;
+  }
+  .honest-box .honest-label{
+    display:block;
+    font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--rose);
+    margin-bottom:6px;
+  }
+  .honest-box p{ font-size:14px; line-height:1.6; margin:0; color:var(--ink); }
+
+  /* POP-UP FORM KONTAK */
+  .modal-backdrop{
+    position:fixed; inset:0; z-index:50;
+    background:rgba(42,33,25,.45);
+    -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px);
+    display:flex; align-items:center; justify-content:center;
+    padding:16px;
+    overflow-y:auto;
+    animation:fadeIn .18s ease;
+  }
+  .modal{
+    width:100%; max-width:440px;
+    max-height:calc(100vh - 32px); overflow-y:auto;
+    background:#fff;
+    border-radius:var(--radius);
+    padding:26px 24px 22px;
+    box-shadow:0 24px 60px rgba(42,33,25,.25);
+    border:1px solid var(--line);
+    animation:popIn .2s ease;
+  }
+  .modal-title{
+    font-family:'Fraunces',serif;
+    font-size:22px; font-weight:600; line-height:1.25;
+    margin:0 0 6px; letter-spacing:-.01em;
+  }
+  .modal-sub{ font-size:14px; line-height:1.55; color:var(--ink-soft); margin:0 0 18px; }
+  @keyframes fadeIn{ from{opacity:0} to{opacity:1} }
+  @keyframes popIn{ from{opacity:0; transform:translateY(8px) scale(.98)} to{opacity:1; transform:none} }
+  @media (prefers-reduced-motion:reduce){
+    .modal-backdrop, .modal{ animation:none; }
+  }
   @media (max-width:480px){
     h1{ font-size:26px; }
     .qtext{ font-size:18px; }
+    .modal{ padding:22px 18px 18px; }
   }
 </style>
 </head>
@@ -378,6 +445,18 @@ const FLOW = [QUESTIONS[0],QUESTIONS[1],QUESTIONS[2],QUESTIONS[3],QUESTIONS[4],Q
 // GANTI URL DI BAWAH INI dengan URL Web App dari Apps Script Anda
 // (lihat instruksi di file apps-script-lead-quality.gs)
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyXqGwbjFNdDluJM8FSWnxeNlMkSswKj4hPW8mDmxXtuItuP_JIUH8CFYEK96-50A-s-A/exec";
+const LEAD_MAGNET_LABEL = "Lead Magnet BC - A"; // ganti sesuai versi/campaign kalau ada varian lain
+
+// Token sederhana, harus SAMA dengan SECRET_TOKEN di Apps Script.
+// Catatan: token ini terlihat di source halaman, jadi hanya menahan spam/bot sederhana.
+const APPS_SCRIPT_TOKEN = "40977798a6db9b7279895996";
+
+// Nomor WhatsApp tim Anda yang menerima chat konsultasi (format 628xxxxxxxxxx, tanpa + atau spasi)
+const CONSULT_WA = "6282130956475";
+
+// Penyimpanan progres di perangkat user (localStorage)
+const STORAGE_KEY = "lqc_state_v1";
+const STATE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // progres kedaluwarsa setelah 7 hari
 
 const ARAH = {
   "1.1":"Perjelas dulu siapa target market Anda secara detail — bukan cuma usia/pekerjaan, tapi masalah, kebutuhan, dan keinginan spesifik mereka.",
@@ -405,6 +484,7 @@ let answers = {}; // id -> option index (into shuffled array)
 let shuffledOptions = {}; // id -> array of option objects (shuffled once)
 let contact = { nama:"", klinik:"", wa:"" };
 let quizCode = "";
+let formOpen = false; // pop-up form kontak setelah pertanyaan terakhir
 
 // Kode unik per pengisi quiz, dipakai user buat referensi konsultasi lanjutan
 function generateCode(){
@@ -423,6 +503,95 @@ function shuffle(arr){
   return a;
 }
 FLOW.forEach(q=>{ shuffledOptions[q.id] = shuffle(q.options); });
+
+// ---------- SUMBER LEAD (UTM) ----------
+function cleanParam(v){ return String(v||'').trim().slice(0,120); }
+function readUtmFromUrl(){
+  let p;
+  try{ p = new URLSearchParams(window.location.search); }catch(e){ p = new URLSearchParams(''); }
+  let ref = '';
+  try{ ref = document.referrer ? new URL(document.referrer).hostname : ''; }catch(e){}
+  return {
+    source: cleanParam(p.get('utm_source')),
+    medium: cleanParam(p.get('utm_medium')),
+    campaign: cleanParam(p.get('utm_campaign')),
+    content: cleanParam(p.get('utm_content')),
+    term: cleanParam(p.get('utm_term')),
+    referrer: cleanParam(ref),
+  };
+}
+let utm = readUtmFromUrl();
+
+// ---------- SIMPAN PROGRES DI PERANGKAT USER ----------
+function saveState(){
+  try{
+    const order = {};
+    FLOW.forEach(q=>{ order[q.id] = shuffledOptions[q.id].map(o=>q.options.indexOf(o)); });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      t: Date.now(), step, answers, order, contact, quizCode,
+      sent: resultAlreadySent, utm,
+    }));
+  }catch(e){ /* storage diblokir (mode privat, dll) - quiz tetap jalan tanpa penyimpanan */ }
+}
+function clearState(){
+  try{ localStorage.removeItem(STORAGE_KEY); }catch(e){}
+}
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return;
+    const s = JSON.parse(raw);
+    if(!s || typeof s.t !== 'number' || Date.now() - s.t > STATE_TTL_MS){ clearState(); return; }
+    if(!s.contact || typeof s.contact.nama !== 'string' || typeof s.contact.klinik !== 'string' || typeof s.contact.wa !== 'string'){ clearState(); return; }
+    // kode & kontak boleh kosong selama quiz belum selesai (form diisi di akhir)
+    if(typeof s.quizCode !== 'string' || (s.quizCode !== '' && !/^LQC-[A-Z0-9]{6}$/.test(s.quizCode))){ clearState(); return; }
+    if(s.contact.nama.length > 100 || s.contact.klinik.length > 100 || s.contact.wa.length > 20){ clearState(); return; }
+
+    // pulihkan urutan opsi acak + jawaban, dengan validasi ketat
+    const restoredOrder = {};
+    const restoredAnswers = {};
+    for(const q of FLOW){
+      const ord = s.order && s.order[q.id];
+      const n = q.options.length;
+      if(!Array.isArray(ord) || ord.length !== n) { clearState(); return; }
+      const seen = new Set(ord);
+      if(seen.size !== n || !ord.every(i=>Number.isInteger(i) && i>=0 && i<n)){ clearState(); return; }
+      restoredOrder[q.id] = ord.map(i=>q.options[i]);
+      const a = s.answers && s.answers[q.id];
+      if(a !== undefined){
+        if(!Number.isInteger(a) || a<0 || a>=n){ clearState(); return; }
+        restoredAnswers[q.id] = a;
+      }
+    }
+
+    let restoredStep = s.step;
+    if(restoredStep === "results"){
+      if(!FLOW.every(q=>restoredAnswers[q.id] !== undefined)){ clearState(); return; }
+      // hasil hanya boleh tampil kalau form kontak sudah pernah diisi dengan valid
+      if(!s.contact.nama.trim() || !s.contact.klinik.trim() || !/^628\d{8,10}$/.test(s.contact.wa) || s.quizCode === ''){ clearState(); return; }
+    } else if(!Number.isInteger(restoredStep) || restoredStep < 0 || restoredStep >= FLOW.length){
+      clearState(); return;
+    }
+
+    shuffledOptions = restoredOrder;
+    answers = restoredAnswers;
+    contact = { nama: s.contact.nama, klinik: s.contact.klinik, wa: s.contact.wa };
+    quizCode = s.quizCode;
+    resultAlreadySent = !!s.sent;
+    step = restoredStep;
+    // sumber lead pertama (first touch) dipertahankan kalau URL sekarang tidak membawa UTM
+    if(s.utm && typeof s.utm === 'object'){
+      const hasNewUtm = utm.source || utm.medium || utm.campaign || utm.content || utm.term;
+      if(!hasNewUtm){
+        utm = {
+          source: cleanParam(s.utm.source), medium: cleanParam(s.utm.medium),
+          campaign: cleanParam(s.utm.campaign), content: cleanParam(s.utm.content),
+          term: cleanParam(s.utm.term), referrer: cleanParam(s.utm.referrer),
+        };
+      }
+    }
+  }catch(e){ clearState(); }
+}
 
 // ---------- DOM HELPER (no innerHTML, for security-safe DOM building) ----------
 function el(tag, attrs, children){
@@ -463,7 +632,19 @@ function render(){
     content = renderQuestion();
   }
   app.appendChild(content);
+  // pop-up form hanya valid di pertanyaan terakhir
+  if(step !== FLOW.length-1) formOpen = false;
+  if(formOpen) app.appendChild(renderContactForm());
   attachHandlers();
+  if(step !== "intro") saveState();
+
+  // pop-up terbuka: kunci scroll halaman di belakangnya & arahkan fokus ke kolom yang belum terisi
+  try{ document.body.style.overflow = formOpen ? 'hidden' : ''; }catch(e){}
+  if(formOpen){
+    const target = !contact.nama ? 'in-nama' : (!contact.klinik ? 'in-klinik' : 'in-wa');
+    const input = document.getElementById(target);
+    if(input) input.focus();
+  }
 }
 
 function renderIntro(){
@@ -472,32 +653,96 @@ function renderIntro(){
   frag.appendChild(el('h1',{text:'Seberapa berkualitas lead dari iklan klinik Anda?'}));
   frag.appendChild(el('p',{class:'sub',text:`Jawab ${FLOW.length} pertanyaan singkat (kurang dari 3 menit) untuk mengetahui apakah iklan klinik Anda sudah mendatangkan lead yang tepat — atau justru cuma ramai tapi nggak closing.`}));
 
-  const whyBox = el('div',{class:'why-box'},[
-    el('p',{text:'Kami minta nama & WhatsApp Anda supaya hasil dan rekomendasi perbaikannya bisa dikirim langsung ke Anda — bukan cuma tampil sekali di layar dan hilang. Data Anda tidak dibagikan ke pihak lain.'})
+  const infoItems = [
+    'Seberapa jelas target market dan layanan yang Anda iklankan (Market Fit)',
+    'Seberapa tepat pesan iklan Anda untuk target market tersebut (Messaging)',
+    'Seberapa sesuai lead yang masuk dengan yang Anda incar (Kualitas Lead)',
+  ];
+  const infoList = el('ul',{class:'info-list'}, infoItems.map((t,i)=>
+    el('li',{},[ el('span',{class:'info-num',text:String(i+1)}), el('span',{text:t}) ])
+  ));
+
+  const honestBox = el('div',{class:'honest-box'},[
+    el('span',{class:'honest-label',text:'Mohon dijawab apa adanya'}),
+    el('p',{text:'Pilih jawaban yang paling menggambarkan kondisi Anda saat ini, bukan kondisi yang Anda inginkan. Tidak ada jawaban benar atau salah — hasilnya hanya akurat kalau jawabannya jujur.'}),
   ]);
 
-  const fNama = el('div',{class:'field', id:'f-nama'},[
-    el('label',{for:'in-nama',text:'Nama Anda'}),
-    el('input',{type:'text', id:'in-nama', placeholder:'Nama lengkap'}),
-    el('div',{class:'field-error',text:'Nama wajib diisi'}),
-  ]);
-  const fKlinik = el('div',{class:'field', id:'f-klinik'},[
-    el('label',{for:'in-klinik',text:'Nama Klinik'}),
-    el('input',{type:'text', id:'in-klinik', placeholder:'Nama klinik Anda'}),
-    el('div',{class:'field-error',text:'Nama klinik wajib diisi'}),
-  ]);
-  const fWa = el('div',{class:'field', id:'f-wa'},[
-    el('label',{for:'in-wa',text:'Nomor WhatsApp'}),
-    el('input',{type:'tel', id:'in-wa', placeholder:'628xxxxxxxxx'}),
-    el('div',{class:'field-error',text:'Nomor WhatsApp tidak valid (format 628xxxxxxxxx, minimal 10 digit)'}),
-  ]);
+  const endNote = el('p',{style:'font-size:13px; line-height:1.55; color:var(--ink-soft); margin:0 0 4px;', text:'Di akhir quiz, Anda akan diminta mengisi nama dan nomor WhatsApp untuk melihat hasilnya.'});
+
   const navRow = el('div',{class:'nav-row', style:'justify-content:flex-end;'},[
     el('button',{class:'btn btn-primary', id:'startBtn', text:'Mulai Quiz →'})
   ]);
 
-  const card = el('div',{class:'card'},[whyBox, fNama, fKlinik, fWa, navRow]);
+  const card = el('div',{class:'card'},[
+    el('p',{class:'info-title',text:'Quiz ini akan mengecek 3 hal:'}),
+    infoList, honestBox, endNote, navRow,
+  ]);
   frag.appendChild(card);
   return frag;
+}
+
+// Pop-up form kontak: muncul setelah pertanyaan terakhir dijawab
+function renderContactForm(){
+  const whyBox = el('div',{class:'why-box'},[
+    el('p',{text:'Nama & nomor WhatsApp Anda kami pakai hanya untuk mengirim hasil dan menghubungi Anda terkait konsultasi perbaikan campaign. Data Anda tidak dibagikan ke pihak lain.'})
+  ]);
+  const fNama = el('div',{class:'field', id:'f-nama'},[
+    el('label',{for:'in-nama',text:'Nama Anda'}),
+    el('input',{type:'text', id:'in-nama', placeholder:'Nama lengkap', maxlength:'100', autocomplete:'name', value:contact.nama}),
+    el('div',{class:'field-error',text:'Nama wajib diisi'}),
+  ]);
+  const fKlinik = el('div',{class:'field', id:'f-klinik'},[
+    el('label',{for:'in-klinik',text:'Nama Klinik'}),
+    el('input',{type:'text', id:'in-klinik', placeholder:'Nama klinik Anda', maxlength:'100', autocomplete:'organization', value:contact.klinik}),
+    el('div',{class:'field-error',text:'Nama klinik wajib diisi'}),
+  ]);
+  const fWa = el('div',{class:'field', id:'f-wa'},[
+    el('label',{for:'in-wa',text:'Nomor WhatsApp'}),
+    el('input',{type:'tel', id:'in-wa', placeholder:'628xxxxxxxxx', maxlength:'20', autocomplete:'tel', inputmode:'tel', value:contact.wa}),
+    el('div',{class:'field-error',text:'Nomor WhatsApp tidak valid. Gunakan nomor Indonesia, 11–13 angka (contoh: 628123456789)'}),
+  ]);
+  const navRow = el('div',{class:'nav-row'},[
+    el('button',{class:'btn btn-ghost', id:'contactCancel', text:'← Kembali'}),
+    el('button',{class:'btn btn-primary', id:'contactSubmit', text:'Lihat Hasil Saya'}),
+  ]);
+  const dialog = el('div',{class:'modal', role:'dialog', 'aria-modal':'true', 'aria-labelledby':'modal-title'},[
+    el('div',{class:'eyebrow',text:'Satu langkah lagi'}),
+    el('h2',{class:'modal-title', id:'modal-title', text:'Isi data untuk melihat hasil Anda'}),
+    el('p',{class:'modal-sub',text:'Hasil dan kode konsultasi Anda akan langsung tampil setelah ini.'}),
+    whyBox, fNama, fKlinik, fWa, navRow,
+  ]);
+  return el('div',{class:'modal-backdrop', id:'contactModal'},[dialog]);
+}
+
+function closeContactForm(){
+  formOpen = false;
+  render();
+}
+
+function submitContactForm(){
+  const nama = document.getElementById('in-nama').value.trim().slice(0,100);
+  const klinik = document.getElementById('in-klinik').value.trim().slice(0,100);
+  const wa = normalizeWa(document.getElementById('in-wa').value);
+
+  const namaBad = nama.length === 0;
+  const klinikBad = klinik.length === 0;
+  const waBad = !/^628\d{8,10}$/.test(wa); // total 11-13 angka, diawali 628
+  toggleFieldError('f-nama', namaBad);
+  toggleFieldError('f-klinik', klinikBad);
+  toggleFieldError('f-wa', waBad);
+  if(namaBad || klinikBad || waBad){
+    const firstBad = namaBad ? 'in-nama' : (klinikBad ? 'in-klinik' : 'in-wa');
+    const input = document.getElementById(firstBad);
+    if(input) input.focus();
+    return;
+  }
+
+  contact = { nama, klinik, wa };
+  if(!quizCode) quizCode = generateCode();
+  formOpen = false;
+  step = "results";
+  render();
+  try{ window.scrollTo(0,0); }catch(e){}
 }
 
 function renderQuestion(){
@@ -527,7 +772,7 @@ function renderQuestion(){
 
   const navRow = el('div',{class:'nav-row'},[
     el('button',{class:'btn btn-ghost', id:'backBtn', disabled:(step===0), text:'← Kembali'}),
-    el('button',{class:'btn btn-primary', id:'nextBtn', disabled:(selected===undefined), text:(step===FLOW.length-1?'Lihat Hasil':'Lanjut')}),
+    el('button',{class:'btn btn-primary', id:'nextBtn', disabled:(selected===undefined), text:'Lanjut'}),
   ]);
 
   const card = el('div',{class:'card'},[
@@ -552,39 +797,38 @@ function attachHandlers(){
   const nextBtn = document.getElementById('nextBtn');
   if(backBtn) backBtn.addEventListener('click', ()=>{ step--; render(); });
   if(nextBtn) nextBtn.addEventListener('click', ()=>{
-    if(step === FLOW.length-1){ step = "results"; } else { step++; }
+    if(step === FLOW.length-1){ formOpen = true; } else { step++; }
     render();
   });
   const restartBtn = document.getElementById('restartBtn');
   if(restartBtn) restartBtn.addEventListener('click', ()=>{
-    step=0; answers={};
+    // mulai percobaan baru: kode baru & hasil percobaan ini akan tercatat sebagai baris baru.
+    // Nama/klinik/WA tetap terisi otomatis di pop-up supaya tidak perlu mengetik ulang.
+    step=0; answers={}; quizCode=""; resultAlreadySent=false; formOpen=false;
     FLOW.forEach(q=>{ shuffledOptions[q.id] = shuffle(q.options); });
     render();
+    try{ window.scrollTo(0,0); }catch(e){}
   });
   const startBtn = document.getElementById('startBtn');
   if(startBtn) startBtn.addEventListener('click', ()=>{
-    const namaEl = document.getElementById('in-nama');
-    const klinikEl = document.getElementById('in-klinik');
-    const waEl = document.getElementById('in-wa');
-    const nama = namaEl.value.trim();
-    const klinik = klinikEl.value.trim();
-    const wa = normalizeWa(waEl.value);
-
-    let valid = true;
-    toggleFieldError('f-nama', nama.length === 0);
-    toggleFieldError('f-klinik', klinik.length === 0);
-    const waInvalid = !wa.startsWith('628') || wa.length < 10;
-    toggleFieldError('f-wa', waInvalid);
-    if(nama.length===0 || klinik.length===0 || waInvalid) valid = false;
-
-    if(valid){
-      contact = { nama, klinik, wa };
-      quizCode = generateCode();
-      step = 0;
-      render();
-    }
+    step = 0;
+    render();
   });
+  const contactSubmit = document.getElementById('contactSubmit');
+  if(contactSubmit) contactSubmit.addEventListener('click', submitContactForm);
+  const contactCancel = document.getElementById('contactCancel');
+  if(contactCancel) contactCancel.addEventListener('click', closeContactForm);
 }
+
+// Keyboard untuk pop-up: Esc menutup, Enter di kolom isian mengirim form
+document.addEventListener('keydown', (e)=>{
+  if(!formOpen) return;
+  if(e.key === 'Escape'){ closeContactForm(); }
+  else if(e.key === 'Enter' && e.target && e.target.tagName === 'INPUT'){
+    e.preventDefault();
+    submitContactForm();
+  }
+});
 
 // Menormalkan berbagai format input nomor WA (08xx, +62xx, 62xx, 8xx)
 // supaya hasilnya selalu diawali "628".
@@ -751,7 +995,15 @@ function sendResultToSheet(r, p2, p3, p4, teaser){
   if(!APPS_SCRIPT_URL || APPS_SCRIPT_URL.indexOf("PASTE_URL") === 0) return; // belum di-setup, skip diam-diam
   resultAlreadySent = true;
   const payload = {
+    token: APPS_SCRIPT_TOKEN,
     code: quizCode,
+    leadMagnet: LEAD_MAGNET_LABEL,
+    utmSource: utm.source,
+    utmMedium: utm.medium,
+    utmCampaign: utm.campaign,
+    utmContent: utm.content,
+    utmTerm: utm.term,
+    referrer: utm.referrer,
     nama: contact.nama,
     klinik: contact.klinik,
     wa: contact.wa,
@@ -836,9 +1088,20 @@ function renderResults(){
 
     <button class="restart" id="restartBtn">Isi ulang quiz</button>
   `;
+
+  // Tombol konsultasi: buka WhatsApp dengan pesan siap kirim berisi nama, klinik, dan kode quiz.
+  // Diisi lewat DOM (bukan lewat template string) supaya input user tidak masuk ke HTML mentah.
+  const cta = container.querySelector('#ctaBtn');
+  if(cta && /^628\d{8,10}$/.test(CONSULT_WA)){
+    const msg = `Halo, saya ${contact.nama} dari ${contact.klinik}. Kode quiz saya ${quizCode} (skor ${r.total}/21). Saya mau konsultasi soal hasil quiz Lead Quality.`;
+    cta.setAttribute('href', `https://wa.me/${CONSULT_WA}?text=${encodeURIComponent(msg)}`);
+    cta.setAttribute('target', '_blank');
+    cta.setAttribute('rel', 'noopener noreferrer');
+  }
   return container;
 }
 
+loadState();
 render();
 </script>
 </body>
